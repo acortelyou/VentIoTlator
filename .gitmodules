@@ -1,0 +1,6 @@
+[submodule "submodules/iot-central-firmware"]
+	path = submodules/iot-central-firmware
+	url = https://github.com/Azure/iot-central-firmware.git
+[submodule "submodules/ArduinoTuya"]
+	path = submodules/ArduinoTuya
+	url = https://github.com/acortelyou/ArduinoTuya.git
