@@ -1,1 +1,0 @@
-../../submodules/ArduinoTuya/src/ArduinoTuya.h
