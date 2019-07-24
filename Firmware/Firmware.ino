@@ -1,5 +1,9 @@
 // Licensed under the MIT license.
 
+const char* SCOPE_ID = "";
+const char* DEVICE_ID = "";
+const char* DEVICE_KEY = "";
+
 // WiFi
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
@@ -22,10 +26,17 @@ void on_event(IOTContext ctx, IOTCallbackInfo* callbackInfo);
 // Smartplugs
 #include "src/ArduinoTuya/ArduinoTuya.h"
 
+// IR
+#include <Arduino.h>
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+
 void setup() {
   
   // Serial
   Serial.begin(115200);
+  delay(1000);
+  Serial.println();
   Serial.println();
 
   // GPIO
@@ -42,12 +53,23 @@ void setup() {
   while (wifiMulti.run() != WL_CONNECTED) {
     delay(100);
   }
+  Serial.println();
+  Serial.print("MAC: ");
+  Serial.println(WiFi.macAddress());
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("ID: ");
+  Serial.println(DEVICE_ID);
+  Serial.println();
 
   // State
   lastTick = 0;
   isConnected = false;
-  
-  
+
+  // Start
+  connect_client(SCOPE_ID, DEVICE_ID, DEVICE_KEY);
+  iotc_do_work(context);
+  Serial.println("Ready");
 }
 
 void loop() {
@@ -74,18 +96,22 @@ void loop() {
       // Read sensor
       SHT31D result = sht3xd.readTempAndHumidity(SHT3XD_REPEATABILITY_HIGH, SHT3XD_MODE_POLLING, 50);
 
-      // Build message
+      // Create message and send telemetry
       DynamicJsonDocument doc(JSON_OBJECT_SIZE(3));
+      doc["device"] = DEVICE_ID;
+      
+      char msg[128];
+      int errorCode;
+      
       if (result.error == SHT3XD_NO_ERROR) {
         doc["temperature"] = result.t;
         doc["humidity"] = result.rh;
+        errorCode = iotc_send_telemetry(context, msg, serializeJson(doc, msg));
+      } else {
+        doc["error"] = (int)result.error;
+        errorCode = iotc_send_event(context, msg, serializeJson(doc, msg));
       }
-      doc["error"] = (int)result.error;
-      char msg[128];
-      int len = serializeJson(doc, msg);
-
-      // Send message
-      int errorCode = iotc_send_telemetry(context, msg, len);
+      
       if (errorCode != 0) {
         LOG_ERROR("Sending message has failed with error code %d", errorCode);
       }
